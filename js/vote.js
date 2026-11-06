@@ -3,6 +3,7 @@
   const C = window.VOTE_CONFIG || {}, $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   if (!C.url || !C.key || /PASTE/.test(C.url + C.key)) { $('#vMain').hidden = true; $('#vOff').hidden = false; return; }
+  if (!window.supabase) { $('#vMain').hidden = true; $('#vOff').hidden = false; $('#vOff').innerHTML = '<h2>Could not load the voting tools</h2><p>Check your internet connection and refresh the page.</p>'; return; }
   const db = supabase.createClient(C.url, C.key);
   let serial = null, POS = [], live = null, rvAt = 0;
 
@@ -72,9 +73,10 @@
   $('#vBallot').addEventListener('change', count);
   $('#vGo').onclick = () => verify($('#vSerial').value);
   $('#vSerial').addEventListener('keydown', e => { if (e.key === 'Enter') verify(e.target.value); });
+  const loadZX = () => window.ZXing ? Promise.resolve() : new Promise((ok, no) => { const t = document.createElement('script'); t.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js'; t.onload = ok; t.onerror = no; document.head.appendChild(t); });
   $('#vFile').onchange = async e => {
     const f = e.target.files[0]; if (!f) return; const u = URL.createObjectURL(f);
-    try { const h = new Map(); h.set(ZXing.DecodeHintType.TRY_HARDER, true); verify((await new ZXing.BrowserMultiFormatReader(h).decodeFromImageUrl(u)).getText()); }
+    try { await loadZX(); const h = new Map(); h.set(ZXing.DecodeHintType.TRY_HARDER, true); verify((await new ZXing.BrowserMultiFormatReader(h).decodeFromImageUrl(u)).getText()); }
     catch { toast('Could not read the card. Try a clearer photo or type your code.', 1); }
   };
   $('#vSubmit').onclick = () => {
